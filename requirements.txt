@@ -6,3 +6,4 @@ PyJWT
 Flask
 flask-cors
 dotenv
+cryptoconditions
