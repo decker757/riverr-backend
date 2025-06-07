@@ -28,13 +28,15 @@ from xrpl.transaction import autofill_and_sign, submit_and_wait
 # response = submit_and_wait(signed, client)
 # print(response.result)
 
-TrustLine.create_trustline(
-    wallet=wallet1,
-    issuer_address=wallet3.classic_address,
-    currency_code="RLUSD",
-    limit=10000000,
-    client=client
-)
+create_dummy_accounts()
+
+# TrustLine.create_trustline(
+#     wallet=wallet1,
+#     issuer_address=wallet3.classic_address,
+#     currency_code="RLUSD",
+#     limit=10000000,
+#     client=client
+# )
 
 # TrustLine.send_issued_currency(
 #     wallet=wallet1,
