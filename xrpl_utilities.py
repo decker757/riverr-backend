@@ -76,6 +76,21 @@ def inject_issued_currency(issuer_wallet: Wallet, recipient_address: str, curren
 
 issuer_wallet = Wallet.from_seed(seed=os.getenv("WALLET3_SEED"))
 recipient = os.getenv("WALLET1_ADDRESS")
+# inject_issued_currency(
+#     issuer_wallet=issuer_wallet,
+#     recipient_address=recipient,
+#     currency="ETH",
+#     value=500,
+#     client=client
+# )
+
+# inject_issued_currency(
+#     issuer_wallet=wallet3,
+#     recipient_address=wallet2.classic_address,
+#     currency="ETH",
+#     value=1000,
+#     client=client
+# )
 
 
 class Transaction:
