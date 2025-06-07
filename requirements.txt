@@ -1,0 +1,13 @@
+matplotlib
+numpy
+xrpl-py
+bcrypt
+PyJWT
+Flask
+flask-cors
+dotenv
+supabase
+bcrypt
+xrpl-py
+dotenv
+jwt
