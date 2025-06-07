@@ -6,9 +6,7 @@ from xrpl.transaction import autofill_and_sign, submit_and_wait
 from xrpl.models.requests import AccountLines, AccountTx
 from xrpl.wallet import Wallet, generate_faucet_wallet
 from xrpl import XRPLException
-from os import urandom
-from cryptoconditions import PreimageSha256
-from time import time
+
 import json
 import xrpl
 
@@ -366,23 +364,8 @@ class TrustLineAnalytics:
 
         return summary
     
-    class Escrow:
-        @staticmethod
-        def create_escrow():
-            secret = urandom(32)
 
-            fulfillment = PreimageSha256(preimage=secret)
 
-            print("Condition", fulfillment.condition_binary.hex().upper())
-
-            # Keep secret until you want to finish the escrow
-            print("Fulfillment", fulfillment.serialize_binary().hex().upper())
-
-            
-            ripple_offset = 946684800
-            cancel_after = int(time()) + (24*60*60) - 946684800
-            print(cancel_after)
-# Example: 556927412
 # try:
 #     result = TrustLine.send_issued_currency(
 #         wallet=wallet1,  # 👈 must already hold ETH issued by wallet3
