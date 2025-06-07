@@ -40,6 +40,14 @@ def get_all_usernames(exclude_username=None):
         response = db.table("users").select("username").execute()
     return [row["username"] for row in response.data]
 
+def update_wallet(username, wallet_id):
+    response = db.table("users").update({"wallet_id": wallet_id}).eq("username", username).execute()
+
+    if response.data==[]:
+        return False
+    else:
+        return True
+
 #listing methods
 def insert_listing(username, listing_name, price, listing_desc):
     data = {
@@ -58,20 +66,20 @@ def remove_listing(id):
     else:
         return True
 
-def update_buyer(id, username):
-    data = {"buyer_name": username}
-    response = db.table("listings").update(data).eq("id", id).execute()
-    if response.data==[]:
-        return False 
-    else:
-        return True
-
 def update_listing(id, listing_name, price, listing_desc):
     data = {
         "listing_name": listing_name,
         "price": price,
         "listing_description": listing_desc
         }
+    response = db.table("listings").update(data).eq("id", id).execute()
+    if response.data==[]:
+        return False 
+    else:
+        return True
+
+def update_buyer(id, username, priv_key):
+    data = {"buyer_name": username, "escrow_key": priv_key}
     response = db.table("listings").update(data).eq("id", id).execute()
     if response.data==[]:
         return False 

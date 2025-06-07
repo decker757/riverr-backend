@@ -6,33 +6,40 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 import xrpl_utilities
+from xrpl_client import XRPLClient
 import db
 
+# Load environment variables from .env
 load_dotenv()
 SECRET_KEY = os.getenv("SECRET_KEY")
+JSON_RPC_URL = os.getenv("JSON_RPC_URL")
 
+# Initialize Flask app and enable CORS
 app = Flask(__name__)
 CORS(app)
 
+# --- Basic Utility Route ---
 
+# Health check route to test server is alive
 @app.route("/ping", methods=["GET"])
 def ping():
     return jsonify({"message": "pong"}), 200
-    
-    
-#Address to test functions: rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe
-#login
+
+
+# --- User Authentication ---
+
+# Login route: verifies user credentials and returns a JWT token if valid
 @app.route("/app/login", methods=['POST']) 
 def login():
     try:
-        data = request.get_json()
-        username = data.get("username")
-        password = data.get("password")
+        data = json.loads(request.get_data(as_text=True))
+        username = data["username"]
+        password = data["password"]
 
         if db.validate_user_login(username, password):
             payload = {
-            'username': username,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+                'username': username,
+                'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1)
             }
             token = jwt.encode(payload, SECRET_KEY, algorithm='HS256')
             return jsonify({'token': token}), 200
@@ -42,11 +49,11 @@ def login():
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+# Registration route: creates a new user
 @app.route("/app/register", methods=['POST'])
 def register():
     try:
-        data = request.get_data(as_text=True)
-        data = json.loads(data)
+        data = json.loads(request.get_data(as_text=True))
         username = data["username"]
         password = data["password"]
 
@@ -60,132 +67,184 @@ def register():
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+
+# --- User Data Retrieval ---
+
+# Get specific user data by username
 @app.route("/app/user", methods=['GET'])
 def get_user():
     try:
-        data = request.get_json()
-        username = data.get("username")
+        data = json.loads(request.get_data(as_text=True))
+        username = data["username"]
+        user_data = db.get_user_data_by_username(username)
 
-        data = db.get_user_data_by_username(username)
-        if data:
-            return jsonify({
-                "message": "Success",
-                "data": data
-            }
-            ), 200
+        if user_data:
+            return jsonify({"message": "Success", "data": user_data}), 200
         else:
             return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
-    
+
+# Get all users, optionally excluding the requesting user
 @app.route("/app/all_users", methods=['GET'])
 def get_all_user():
     try:
-        data = request.get_json()
-        username = data.get("username")
+        data = json.loads(request.get_data(as_text=True))
+        username = data["username"]
     except:
         username = None
     try:
         data = db.get_all_usernames(username)
         if data:
-            return jsonify({
-                "message": "Success",
-                "data": data
-            }
-            ), 200
+            return jsonify({"message": "Success", "data": data}), 200
         else:
             return jsonify({'error': 'User not found'}), 404
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+@app.route("/app/update_wallet", methods=['GET'])
+def update_wallet():
+    try:
+        data = json.loads(request.get_data(as_text=True))
+        username = data["username"]
+        wallet_id = data["wallet_id"]
+        data = db.update_wallet(username, wallet_id)
+        if data:
+            return jsonify({"message": "Success", "data": data}), 200
+        else:
+            return jsonify({'error': 'User not found'}), 404
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'Unknown error'}), 500
+
+# --- Listings ---
+
+# Create a new listing
 @app.route("/app/create_listing", methods=['POST'])
 def create_listing():
     try:
-        data = request.get_json()
-        username = data.get("username")
-        listing_name = data.get("listing_name")
-        price = data.get("price"),
-        listing_desc = data.get("listing_description")
+        data = json.loads(request.get_data(as_text=True))
+        username = data["username"]
+        listing_name = data["listing_name"]
+        price = data["price"]  # Ensure it's not a tuple
+        listing_desc = data["listing_description"]
         db.insert_listing(username, listing_name, price, listing_desc)
         return jsonify({'message': 'Listing created successfully'}), 201
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+# Remove a listing by ID
 @app.route("/app/remove_listing", methods=['DELETE'])
 def remove_listing():
     try:
-        data = request.get_json()
-        id = data.get("id")
+        data = json.loads(request.get_data(as_text=True))
+        id = data["id"]
         db.remove_listing(id)
         return jsonify({'message': 'Listing deleted successfully'}), 200
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
-    
-@app.route("/app/update_buyer", methods=['PUT'])
-def update_buyer():
-    try:
-        data = request.get_json()
-        id = data.get("id")
-        username = data.get("username")
-        db.update_buyer(id, username)
-        return jsonify({'message': 'Buyer updated successfully'}), 200
-    except Exception as e:
-        print(e)
-        return jsonify({'error': 'Unknown error'}), 500
 
+# Update listing details
 @app.route("/app/update_listing", methods=['PUT'])
 def update_listing():
     try:
-        data = request.get_json()
-        id = data.get("id")
-        listing_name = data.get("listing_name")
-        price = data.get("price")
-        listing_desc = data.get("listing_description")
+        data = json.loads(request.get_data(as_text=True))
+        id = data["id"]
+        listing_name = data["listing_name"]
+        price = data["price"]
+        listing_desc = data["listing_description"]
         db.update_listing(id, listing_name, price, listing_desc)
         return jsonify({'message': 'Listing updated successfully'}), 200
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
-    
+
+# Get all listings
 @app.route("/app/all_listings", methods=['GET'])
 def all_listings():
     try:
         data = db.get_all_listings()
-        return jsonify({
-            "message": "Success",
-            "data": data
-        }
-        ), 200
+        return jsonify({"message": "Success", "data": data}), 200
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+# Get a specific listing (seems like it deletes a listing too — potential bug)
 @app.route("/app/listing", methods=['GET'])
 def listing():
     try:
-        data = request.get_json()
-        id = data.get("id")
-        db.remove_listing(id)
-        return jsonify({
-            "message": "Success",
-            "data": data
-        }
-        ), 200
+        data = json.loads(request.get_data(as_text=True))
+        id = data["id"]
+        db.remove_listing(id)  # NOTE: This deletes a listing, which is unexpected in a GET
+        return jsonify({"message": "Success", "data": data}), 200
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
 
+# --- XRP Escrow Routes ---
+
+# Create an escrow transaction
 @app.route("/escrow/create", methods=['POST'])
 def create_escrow():
-    data = request.get_json()
+    try:
+        data = json.loads(request.get_data(as_text=True))
+        
+        listing_id = data["id"]
+        buyer = data["buyer"]
+        cancel_time = data["cancel_after"]
+
+        response = db.get_listing(listing_id)
+
+        sender = db.get_user_data_by_username(buyer)["wallet_id"]
+        destination = db.get_user_data_by_username(response["seller_name"])["wallet_id"]
+
+        if not (sender and destination):
+            return jsonify({
+                "message":"Buyer or seller wallet not found"
+            }),404
+
+        tx, _, fullfillment = XRPLClient(JSON_RPC_URL).create_escrow_tx(
+            sender, destination, response["price"], cancel_time
+        )
+        db.update_buyer(listing_id, data["buyer"], fullfillment)
+        tx = json.loads(json.dumps(tx.to_dict()))
+
+        return jsonify({
+            'message': 'Escrow payload and hash created successfully',
+            'data': tx
+        }), 201
+    
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'Unknown error'}), 500
+
+@app.route("/escrow/sign", methods=['POST'])
+def sign_escrow():
+    data = json.loads(request.get_data(as_text=True))
 
 
-# xrp methods
+
+# Finish an escrow transaction
+@app.route("/escrow/finish", methods=['POST'])
+def finish_escrow():
+    try:
+        data = json.loads(request.get_data(as_text=True))
+        
+        XRPLClient(JSON_RPC_URL).finish_escrow_tx(
+            data["account"], data["owner"], data["offer_sequence"], data["condition"], data["fullfillment"]
+        )
+        return jsonify({'message': 'Escrow finished successfully'}), 201
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'Unknown error'}), 500
+
+
+# Get XRP balance for an address
 @app.route("/xrp/get_balance")
 def get_balance():
     address = request.args.get("address")
@@ -195,6 +254,7 @@ def get_balance():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+# Get trustlines for an address
 @app.route("/xrp/get_trustlines")
 def get_trustlines():
     address = request.args.get("address")
@@ -203,8 +263,8 @@ def get_trustlines():
         return jsonify({"Trustlines": trustlines})
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-    
 
+# Summarize trustlines for an address
 @app.route("/xrp/summarize_trustlines")
 def summarize():
     try:
@@ -215,7 +275,7 @@ def summarize():
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
-
+# Get transaction history for an address
 @app.route("/xrp/get_transaction_history")
 def get_transaction_history():
     try:
@@ -230,6 +290,6 @@ def get_transaction_history():
         return jsonify({'error': 'Unknown error'}), 500
 
 
-
+# --- App Runner ---
 if __name__ == "__main__":
     app.run(debug=True)
