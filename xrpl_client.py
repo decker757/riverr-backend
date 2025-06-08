@@ -53,7 +53,6 @@ class XRPLClient:
         :param fullfillment: The serialized fulfillment in hexadecimal format.
         :return: An EscrowFinish transaction object.
         """
-
         return EscrowFinish(
             account=account,
             owner=owner,
@@ -61,6 +60,7 @@ class XRPLClient:
             condition=condition,
             fulfillment=fullfillment
         )
+        
 
 
 
