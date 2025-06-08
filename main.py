@@ -187,6 +187,17 @@ def listing():
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
+@app.route("/app/reset_listing", methods=['PUT'])
+def reset_listing():
+    try:
+        data = json.loads(request.get_data(as_text=True))
+        id = data["id"]
+        db.update_buyer(id, None, None, None)
+        return jsonify({'message': 'Listing updated successfully'}), 200
+    except Exception as e:
+        print(e)
+        return jsonify({'error': 'Unknown error'}), 500
+
 
 # --- XRP Escrow Routes ---
 
