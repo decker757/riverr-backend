@@ -7,6 +7,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 import xrpl_utilities
 from xrpl_client import XRPLClient
+from xrpl.transaction import submit_and_wait
+from xrpl.clients import JsonRpcClient
 import db
 
 # Load environment variables from .env
@@ -199,7 +201,11 @@ def create_escrow():
         cancel_time = data["cancel_after"]
 
         response = db.get_listing(listing_id)
-
+        if not response:
+            return jsonify({
+                "message":"Listing not found"
+            }),404
+        
         sender = db.get_user_data_by_username(buyer)["wallet_id"]
         destination = db.get_user_data_by_username(response["seller_name"])["wallet_id"]
 
@@ -208,10 +214,10 @@ def create_escrow():
                 "message":"Buyer or seller wallet not found"
             }),404
 
-        tx, _, fullfillment = XRPLClient(JSON_RPC_URL).create_escrow_tx(
+        tx, condition, fullfillment = XRPLClient(JSON_RPC_URL).create_escrow_tx(
             sender, destination, response["price"], cancel_time
         )
-        db.update_buyer(listing_id, data["buyer"], fullfillment)
+        db.update_buyer(listing_id, data["buyer"], fullfillment, condition)
         tx = json.loads(json.dumps(tx.to_dict()))
 
         return jsonify({
@@ -223,22 +229,33 @@ def create_escrow():
         print(e)
         return jsonify({'error': 'Unknown error'}), 500
 
-@app.route("/escrow/sign", methods=['POST'])
-def sign_escrow():
-    data = json.loads(request.get_data(as_text=True))
-
-
-
 # Finish an escrow transaction
 @app.route("/escrow/finish", methods=['POST'])
 def finish_escrow():
     try:
         data = json.loads(request.get_data(as_text=True))
+        listing_id = data["id"]
+        response = db.get_listing(listing_id)
+
+        if not response:
+            return jsonify({'error': 'Listing not found'}), 404
+
+        sender = db.get_user_data_by_username(response["buyer_name"])["wallet_id"]
+        destination = db.get_user_data_by_username(response["seller_name"])["wallet_id"]
+
+        if not (sender and 
+                destination and 
+                response["escrow_condition"] and
+                response["escrow_sequence"] and 
+                response["escrow_fufill"]):
+            return jsonify({'error': 'Escrow was not generated successfully, cannot finish'}), 400
+ 
         
-        XRPLClient(JSON_RPC_URL).finish_escrow_tx(
-            data["account"], data["owner"], data["offer_sequence"], data["condition"], data["fullfillment"]
-        )
-        return jsonify({'message': 'Escrow finished successfully'}), 201
+        payload = json.loads(json.dumps(XRPLClient(JSON_RPC_URL).finish_escrow_tx(
+            destination, sender, response["escrow_sequence"], response["escrow_condition"], response["escrow_fufill"]
+        ).to_dict()))
+        
+        return jsonify({'message': 'Escrow finished successfully', 'data': payload}), 201
     except Exception as e:
         print(e)
         return jsonify({'error': 'Unknown error'}), 500

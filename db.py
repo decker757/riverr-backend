@@ -78,13 +78,22 @@ def update_listing(id, listing_name, price, listing_desc):
     else:
         return True
 
-def update_buyer(id, username, priv_key):
-    data = {"buyer_name": username, "escrow_key": priv_key}
+def update_buyer(id, username, priv_key, condition):
+    data = {"buyer_name": username, "escrow_fufill": priv_key,  "escrow_condition": condition}
     response = db.table("listings").update(data).eq("id", id).execute()
     if response.data==[]:
         return False 
     else:
         return True
+    
+def update_escrow(id, transaction_hash):
+    data = {"transaction_hash": transaction_hash}
+    response = db.table("listings").update(data).eq("id", id).execute()
+    if response.data==[]:
+        return False 
+    else:
+        return True
+
 
 def get_all_listings():
     response = db.table("listings").select("*").execute()
